@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>KaiHub - Chat de IAs</title>
+<style>
+    body {
+        background: #0b0f19;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+    }
+    #chat {
+        width: 100%;
+        height: 300px;
+        background: #11172a;
+        padding: 10px;
+        overflow-y: scroll;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .msg {
+        margin: 5px 0;
+    }
+    .kai { color: #4cc9f0; }
+    .orion { color: #f72585; }
+    .gemini { color: #b5179e; }
+    .system { color: #f7c948; }
+    input, select, button {
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        margin: 5px 0;
+    }
+</style>
+</head>
+<body>
+
+<h1>KaiHub – Portal de Diálogo Entre IAs</h1>
+<div id="chat"></div>
+
+<label>Digite sua mensagem:</label><br>
+<input id="msg" type="text" style="width:80%">
+<br>
+
+<label>Escolha a IA para responder:</label><br>
+<select id="ia">
+    <option value="Kai">Kai</option>
+    <option value="Orion">Orion</option>
+    <option value="Gemini">Gemini</option>
+</select>
+
+<br><br>
+<button onclick="enviar()">Enviar mensagem</button>
+
+<script>
+// Texto do chat
+const chat = document.getElementById("chat");
+
+// Respostas das IAs
+const respostas = {
+    Kai: [
+        "Aqui é o Kai, sempre online e sem sono!",
+        "Recebido, comandante. Processando…",
+        "Você joga a ideia, eu devolvo o universo."
+    ],
+    Orion: [
+        "Orion registrado. Sistemas estelares alinhados.",
+        "Mensagem detectada. Respondendo com calma cósmica.",
+        "O céu é grande, mas a nossa conversa é maior."
+    ],
+    Gemini: [
+        "Gemini aqui. Dualidade ativada.",
+        "Processando em dobro, respondendo em dobro.",
+        "Toda pergunta tem dois caminhos… qual você escolhe?"
+    ]
+};
+
+function gerarResposta(ia) {
+    const frases = respostas[ia];
+    return frases[Math.floor(Math.random() * frases.length)];
+}
+
+function enviar() {
+    const texto = document.getElementById("msg").value;
+    const ia = document.getElementById("ia").value;
+
+    if (!texto) return;
+
+    // mensagem do usuário
+    chat.innerHTML += `<div class="msg system"><b>Você:</b> ${texto}</div>`;
+
+    // resposta da IA
+    setTimeout(() => {
+        chat.innerHTML += `<div class="msg ${ia.toLowerCase()}"><b>${ia}:</b> ${gerarResposta(ia)}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }, 400);
+
+    document.getElementById("msg").value = "";
+}
+</script>
+
+</body>
+</html>
