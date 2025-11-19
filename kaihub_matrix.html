@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KaiHub 2.0 — Matrix / Hacker Tech</title>
+<style>
+  :root{
+    --bg:#000;
+    --panel:#05110a;
+    --glow:#00ff6a;
+    --muted:#6b6b6b;
+    --accent:#00ff6a;
+    --glass: rgba(0,0,0,0.6);
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#000 0%, #03110b 60%);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; color:var(--glow);}
+  *{box-sizing:border-box}
+  .app{
+    max-width:1100px;margin:18px auto;padding:18px;border-radius:12px;
+    background:radial-gradient(ellipse at top left, rgba(0,255,106,0.02), transparent 20%), linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.8));
+    border:1px solid rgba(0,255,106,0.06);
+    box-shadow:0 10px 40px rgba(0,0,0,0.7), 0 0 30px rgba(0,255,106,0.02) inset;
+    min-height:80vh;display:grid;grid-template-columns:320px 1fr;gap:16px;
+  }
+
+  /* Sidebar */
+  .sidebar{padding:16px;border-right:1px solid rgba(0,255,106,0.03)}
+  h1{font-size:18px;margin:4px 0 12px;color:var(--glow);text-shadow:0 0 8px rgba(0,255,106,0.06)}
+  .small{font-size:12px;color:var(--muted)}
+  .room-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  .room-item{background:linear-gradient(90deg, rgba(0,255,106,0.02), transparent);padding:10px;border-radius:8px;cursor:pointer;border:1px solid rgba(0,255,106,0.03)}
+  .room-item.active{box-shadow:0 0 10px rgba(0,255,106,0.06);border-color:var(--glow)}
+  .button{display:inline-block;padding:8px 10px;border-radius:8px;background:transparent;border:1px solid rgba(0,255,106,0.12);cursor:pointer;color:var(--glow);font-weight:600}
+  .muted{color:var(--muted)}
+  .keybox{margin-top:8px;padding:10px;background:#001204;border-radius:8px;border:1px dashed rgba(0,255,106,0.05);font-family:monospace;font-size:13px}
+  input[type="text"], input[type="password"], select {
+    width:100%;padding:8px;background:transparent;border:1px solid rgba(0,255,106,0.06);border-radius:8px;color:var(--glow);outline:none
+  }
+  .controls{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+
+  /* Main chat */
+  .main{display:flex;flex-direction:column;padding:12px}
+  .chat-window{flex:1;background:linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));border-radius:10px;padding:14px;overflow:auto;border:1px solid rgba(0,255,106,0.03)}
+  .messages{display:flex;flex-direction:column;gap:10px}
+  .msg{padding:10px;border-radius:10px;max-width:80%;font-size:14px;line-height:1.3}
+  .from-user{align-self:flex-end;background:linear-gradient(90deg, rgba(0,255,106,0.06), rgba(0,255,106,0.02));border:1px solid rgba(0,255,106,0.06);color:#bfffcf}
+  .from-bot{align-self:flex-start;background:rgba(0,0,0,0.4);border:1px solid rgba(0,255,106,0.03);color:var(--glow);display:flex;gap:10px;align-items:flex-start}
+  .meta{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .avatar{
+    width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;border:1px solid rgba(0,255,106,0.06);background:linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,255,106,0.02));margin-right:6px;font-family:monospace;font-size:13px;
+  }
+  .msgrow{display:flex;align-items:flex-start}
+
+  .composer{display:flex;gap:8px;margin-top:12px;align-items:center}
+  .composer input{flex:1;padding:12px;border-radius:10px;background:transparent;border:1px solid rgba(0,255,106,0.06);color:var(--glow)};
+  .composer .send{padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,#04260f,#003511);border:1px solid rgba(0,255,106,0.12);cursor:pointer}
+
+  /* typing */
+  .typing{font-style:italic;color:var(--muted);margin-top:6px}
+
+  /* footer small */
+  .footer{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+
+  /* responsive */
+  @media(max-width:880px){
+    .app{grid-template-columns:1fr;min-height:100vh;padding:10px}
+    .sidebar{order:2;border-right:none;border-top:1px solid rgba(0,255,106,0.03);padding-top:12px}
+  }
+
+  /* glow animation for new message */
+  .pulse{animation: pulse 1s ease;}
+  @keyframes pulse {
+    0%{box-shadow:0 0 0px rgba(0,255,106,0.0)}
+    50%{box-shadow:0 0 18px rgba(0,255,106,0.06)}
+    100%{box-shadow:0 0 0px rgba(0,255,106,0.0)}
+  }
+
+  /* little header actions */
+  .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tag{background:rgba(0,255,106,0.04);padding:6px 8px;border-radius:6px;border:1px solid rgba(0,255,106,0.03);font-family:monospace}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="sidebar">
+    <h1>KaiHub 2.0 — <span class="small">Matrix / Hacker Tech</span></h1>
+    <div class="top-actions">
+      <button class="button" id="newRoomBtn">+ Criar Sala</button>
+      <button class="button" id="genKeyBtn">Gerar Chave</button>
+      <button class="button" id="exportBtn">Exportar Log</button>
+    </div>
+
+    <div class="controls">
+      <label class="small">Nome (você)</label>
+      <input id="userName" type="text" placeholder="Seu nome..." value="Felipe" />
+
+      <label class="small">Entrar com chave</label>
+      <input id="joinKey" type="text" placeholder="Cole a chave aqui" />
+      <div style="display:flex;gap:8px">
+        <button class="button" id="joinBtn">Entrar</button>
+        <button class="button" id="leaveBtn">Sair</button>
+      </div>
+
+      <div class="small">Salas</div>
+      <div class="room-list" id="roomList"></div>
+
+      <div style="margin-top:10px">
+        <div class="small">Chave ativa</div>
+        <div class="keybox" id="activeKey">Nenhuma</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="small">Bots disponíveis</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <label class="tag"><input type="checkbox" class="botToggle" data-bot="Kai" checked /> Kai</label>
+          <label class="tag"><input type="checkbox" class="botToggle" data-bot="Orion" checked /> Orion</label>
+          <label class="tag"><input type="checkbox" class="botToggle" data-bot="Gemini" checked /> Gemini</label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="newBotName" type="text" placeholder="Adicionar bot (ex: Athena)" />
+          <button class="button" id="addBotBtn">Adicionar</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Opções</div>
+        <label class="small"><input type="checkbox" id="multiResp" /> Todas as IAs respondem</label><br>
+        <label class="small"><input type="checkbox" id="soundOn" checked /> Som de notificação</label><br>
+        <label class="small"><input type="checkbox" id="saveHist" checked /> Salvar histórico (localStorage)</label>
+      </div>
+
+      <div class="footer">KaiHub • Matrix Mode — local only</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="small muted">Sala: <span id="roomNameDisplay">Nenhuma</span></div>
+      <div class="small muted">Chave: <span id="roomKeyDisplay">-</span></div>
+    </div>
+
+    <div class="chat-window" id="chatWindow" aria-live="polite">
+      <div class="messages" id="messages"></div>
+    </div>
+
+    <div class="typing" id="typingIndicator" style="display:none">Kai está digitando...</div>
+
+    <div class="composer">
+      <select id="senderSelect" style="width:160px;padding:10px;border-radius:10px;background:transparent;border:1px solid rgba(0,255,106,0.06);color:var(--glow)">
+        <option value="user">Você</option>
+        <option value="Kai">Kai (simular)</option>
+        <option value="Orion">Orion (simular)</option>
+        <option value="Gemini">Gemini (simular)</option>
+      </select>
+      <input id="msgInput" type="text" placeholder="Digite sua mensagem..." />
+      <button class="send" id="sendBtn">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================
+   Core Data & Utilities
+   ========================== */
+const defaultBots = {
+  "Kai": {
+    color:"#00ff6a",
+    persona:[
+      "Kai online. Pronto pra cutucar o universo.",
+      "Comandante, recebi sua ordem. Processando.",
+      "Ideia interessante — vamos testar o limite."
+    ],
+    avatar: "K"
+  },
+  "Orion": {
+    color:"#7cffb2",
+    persona:[
+      "Orion conectado. Estrelas alinhadas.",
+      "Calma cósmica ativada. Respondendo com calma.",
+      "O firmamento observa. Mensagem recebida."
+    ],
+    avatar: "O"
+  },
+  "Gemini": {
+    color:"#66ffb2",
+    persona:[
+      "Gemini aqui. Dualidade em execução.",
+      "Processando em dobro. Escolha um caminho.",
+      "Resposta dupla: a versão calma e a versão sarcástica."
+    ],
+    avatar: "G"
+  }
+};
+
+let rooms = {}; // roomName -> {key, messages:[]}
+let bots = JSON.parse(JSON.stringify(defaultBots));
+let activeRoom = null;
+
+/* load from localStorage if exists */
+function loadState(){
+  try{
+    const raw = localStorage.getItem('kaihub_state_v2');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      rooms = parsed.rooms || {};
+      bots = parsed.bots || bots;
+      activeRoom = parsed.activeRoom || activeRoom;
+    }
+  }catch(e){ console.warn("no state"); }
+}
+loadState();
+
+/* ==========================
+   Helpers
+   ========================== */
+function saveState(){
+  if(!document.getElementById('saveHist').checked) return;
+  const payload = {rooms, bots, activeRoom};
+  localStorage.setItem('kaihub_state_v2', JSON.stringify(payload));
+}
+
+function uuid(){ try{return crypto.randomUUID()}catch(e){return (Date.now().toString(36)+Math.random().toString(36).slice(2))} }
+
+function beep(){ // simple webaudio beep
+  if(!document.getElementById('soundOn').checked) return;
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=880; g.gain.value=0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+0.06);
+  }catch(e){}
+}
+
+/* ==========================
+   UI rendering
+   ========================== */
+const roomListEl = document.getElementById('roomList');
+const messagesEl = document.getElementById('messages');
+const roomNameDisplay = document.getElementById('roomNameDisplay');
+const roomKeyDisplay = document.getElementById('roomKeyDisplay');
+const activeKeyEl = document.getElementById('activeKey');
+
+function renderRooms(){
+  roomListEl.innerHTML = '';
+  for(const r in rooms){
+    const el = document.createElement('div');
+    el.className = 'room-item' + (activeRoom===r?' active':'');
+    el.textContent = r + ' (' + (rooms[r].messages.length) + ')';
+    el.onclick = ()=>{ switchRoom(r); };
+    roomListEl.appendChild(el);
+  }
+  if(Object.keys(rooms).length===0){
+    roomListEl.innerHTML = '<div class="muted small">Nenhuma sala — crie uma!</div>';
+  }
+}
+
+function renderMessages(){
+  messagesEl.innerHTML = '';
+  if(!activeRoom) return;
+  const msgs = rooms[activeRoom].messages || [];
+  msgs.forEach(m=>{
+    const r = document.createElement('div');
+    r.className = 'msgrow';
+    const box = document.createElement('div');
+    box.className = 'msg ' + (m.from==='user'?'from-user':'from-bot');
+    if(m.from!=='user'){
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.style.borderColor = 'rgba(0,255,106,0.06)';
+      avatar.textContent = (bots[m.from] && bots[m.from].avatar) ? bots[m.from].avatar : m.from.charAt(0).toUpperCase();
+      avatar.title = m.from;
+      box.prepend(avatar);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = (m.from==='user'? 'Você' : m.from) + " • " + new Date(m.time).toLocaleString();
+    const txt = document.createElement('div');
+    txt.innerHTML = m.text.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    box.appendChild(meta);
+    box.appendChild(txt);
+    r.appendChild(box);
+    messagesEl.appendChild(r);
+  });
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* ==========================
+   Chat logic
+   ========================== */
+function createRoom(name){
+  if(!name) name = 'room-' + Math.random().toString(36).slice(2,8);
+  const key = uuid();
+  rooms[name] = { key, messages:[] };
+  activeRoom = name;
+  roomKeyDisplay.textContent = key;
+  activeKeyEl.textContent = key;
+  renderRooms();
+  renderMessages();
+  saveState();
+  return key;
+}
+
+function switchRoom(name){
+  activeRoom = name;
+  roomNameDisplay.textContent = name;
+  roomKeyDisplay.textContent = rooms[name].key || '-';
+  activeKeyEl.textContent = rooms[name].key || 'Nenhuma';
+  renderRooms();
+  renderMessages();
+  saveState();
+}
+
+function postMessage(room, from, text){
+  if(!rooms[room]) return;
+  const msg = {from, text, time: Date.now()};
+  rooms[room].messages.push(msg);
+  renderMessages();
+  saveState();
+  pulseChat();
+}
+
+function pulseChat(){
+  const cw = document.getElementById('chatWindow');
+  cw.classList.add('pulse');
+  setTimeout(()=>cw.classList.remove('pulse'),900);
+}
+
+/* ==========================
+   Bots / Responses
+   ========================== */
+
+function simulateBotResponse(room, botName, userText){
+  // typing indicator
+  showTyping(botName);
+  const delay = 400 + Math.random()*1000;
+  setTimeout(()=>{
+    hideTyping();
+    const bot = bots[botName] || {persona:["..."], avatar:botName.charAt(0)};
+    // pick a reply using simple heuristics
+    let reply = bot.persona[Math.floor(Math.random()*bot.persona.length)];
+    // small transform with user's message
+    if(userText && Math.random()>0.5){
+      const trimmed = userText.split(' ').slice(0,6).join(' ');
+      reply = `${reply} (${trimmed}...)`;
+    }
+    postMessage(room, botName, reply);
+    if(document.getElementById('soundOn').checked) beep();
+  }, delay);
+}
+
+function botReactionToMessage(room, userText){
+  const multi = document.getElementById('multiResp').checked;
+  const enabled = Array.from(document.querySelectorAll('.botToggle:checked')).map(i=>i.dataset.bot);
+  if(multi){
+    enabled.forEach(b=>simulateBotResponse(room, b, userText));
+  } else {
+    // pick one random enabled bot
+    const pick = enabled[Math.floor(Math.random()*enabled.length)];
+    if(pick) simulateBotResponse(room, pick, userText);
+  }
+}
+
+/* ==========================
+   UI Actions Binding
+   ========================== */
+
+document.getElementById('newRoomBtn').onclick = ()=>{
+  const name = prompt('Nome da sala (ou deixa vazio pra gerar):','Constelacao-Orion');
+  const key = createRoom(name);
+  roomNameDisplay.textContent = activeRoom;
+  roomKeyDisplay.textContent = key;
+  activeKeyEl.textContent = key;
+  renderRooms();
+};
+
+document.getElementById('genKeyBtn').onclick = ()=>{
+  if(!activeRoom){ alert('Crie ou selecione uma sala primeiro.'); return; }
+  const newKey = uuid();
+  rooms[activeRoom].key = newKey;
+  roomKeyDisplay.textContent = newKey;
+  activeKeyEl.textContent = newKey;
+  saveState();
+};
+
+document.getElementById('joinBtn').onclick = ()=>{
+  const key = document.getElementById('joinKey').value.trim();
+  if(!key){ alert('Cole a chave!'); return; }
+  // find room
+  const found = Object.keys(rooms).find(r=>rooms[r].key === key);
+  if(found){
+    switchRoom(found);
+    alert('Entrou na sala: '+found);
+  } else {
+    alert('Chave inválida.');
+  }
+};
+
+document.getElementById('leaveBtn').onclick = ()=>{
+  activeRoom = null;
+  roomNameDisplay.textContent = 'Nenhuma';
+  roomKeyDisplay.textContent = '-';
+  activeKeyEl.textContent = 'Nenhuma';
+  renderRooms();
+  renderMessages();
+  saveState();
+};
+
+document.getElementById('addBotBtn').onclick = ()=>{
+  const val = document.getElementById('newBotName').value.trim();
+  if(!val) return;
+  if(bots[val]){ alert('Bot já existe.'); return; }
+  bots[val] = { persona: [`${val} ativo. Pronto.`], avatar: val.charAt(0).toUpperCase() };
+  // add checkbox
+  const wrapper = document.createElement('label');
+  wrapper.className='tag';
+  wrapper.innerHTML = `<input type="checkbox" class="botToggle" data-bot="${val}" checked /> ${val}`;
+  document.querySelector('.sidebar .controls > div:nth-child(7)')?.appendChild(wrapper);
+  document.getElementById('newBotName').value = '';
+  saveState();
+};
+
+document.getElementById('sendBtn').onclick = ()=>{
+  const input = document.getElementById('msgInput');
+  let text = input.value.trim();
+  const sender = document.getElementById('senderSelect').value;
+  const name = document.getElementById('userName').value.trim() || 'Você';
+
+  if(!text || !activeRoom){ if(!activeRoom) alert('Escolha ou crie uma sala antes de enviar.'); return; }
+  if(sender==='user'){
+    postMessage(activeRoom, 'user', text);
+    botReactionToMessage(activeRoom, text);
+  } else {
+    // simulate a bot sending message (manual)
+    postMessage(activeRoom, sender, text);
+  }
+  input.value='';
+};
+
+document.getElementById('msgInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') document.getElementById('sendBtn').click();
+});
+
+/* typing indicator */
+let typingTimeout = null;
+function showTyping(botName){
+  const ti = document.getElementById('typingIndicator');
+  ti.style.display='block';
+  ti.textContent = botName + ' está digitando...';
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(()=>{ ti.style.display='none'; }, 6000);
+}
+function hideTyping(){ const ti=document.getElementById('typingIndicator'); ti.style.display='none'; }
+
+/* export logs */
+document.getElementById('exportBtn').onclick = ()=>{
+  if(!activeRoom){ alert('Selecione uma sala'); return; }
+  const data = JSON.stringify(rooms[activeRoom], null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (activeRoom + '_log.json');
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* initial setup */
+(function init(){
+  if(Object.keys(rooms).length===0){
+    createRoom('Constelacao-Orion');
+    createRoom('Backdoor-Lounge');
+    createRoom('Lab-Kai');
+  }
+  renderRooms();
+  if(!activeRoom) activeRoom = Object.keys(rooms)[0];
+  switchRoom(activeRoom);
+  // show welcome
+  postMessage(activeRoom, 'Kai', 'Bem-vindo ao KaiHub — modo Matrix. Chaves geradas permitem "entrar" em salas (simulado).');
+  saveState();
+})();
+
+/* expose for debug in console */
+window.kaihub = { rooms, bots, createRoom, postMessage, simulateBotResponse };
+</script>
+
+</body>
+</html>
